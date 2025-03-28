@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Event List - Admin Dashboard</title>
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Center entire page using Flexbox */
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg, #111, #222);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    /* Container for overall content */
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    /* Main Card / Panel */
+    .hero-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .hero-card h1 {
+      font-size: 1.8rem;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+
+    /* Table Container */
+    .table-container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 0.75rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      color: #fff;
+      font-size: 0.9rem;
+      table-layout: auto;
+    }
+    table th, table td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #444;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    /* Messages */
+    .message {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+    .message.success { color: #4caf50; }
+    .message.error { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Card: Events List -->
+    <div class="hero-card">
+      <h1>Event List</h1>
+      <button id="loadEventsBtn" class="btn btn-info mb-3">Load Events</button>
+      <div id="eventsTable" class="table-container"></div>
+      <div id="loadMessage" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://localhost:8001/events";
+
+    // Function to load events and display them in a table
+    async function loadEvents() {
+      const eventsTable = document.getElementById("eventsTable");
+      const loadMessage = document.getElementById("loadMessage");
+      eventsTable.innerHTML = "<p>Loading events...</p>";
+      loadMessage.style.display = "none"; // Hide previous messages
+
+      try {
+        const response = await fetch(BASE_URL);
+        if (!response.ok) throw new Error("Failed to load events");
+        const events = await response.json();
+        if (!events.length) {
+          eventsTable.innerHTML = "<p>No events found.</p>";
+          return;
+        }
+        let tableHTML = `<table class="table table-dark table-striped">
+          <thead>
+            <tr>
+              <th style="min-width:80px;">ID</th>
+              <th>Name</th>
+              <th>Venue</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        events.forEach(event => {
+          const eventId = event.id ? event.id : (event._id ? event._id : "Unknown");
+          tableHTML += `<tr>
+            <td>${eventId}</td>
+            <td>${event.name}</td>
+            <td>${event.venue}</td>
+            <td>${event.date}</td>
+          </tr>`;
+        });
+        tableHTML += `</tbody></table>`;
+        eventsTable.innerHTML = tableHTML;
+      } catch (error) {
+        eventsTable.innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
+        loadMessage.textContent = `Error: ${error.message}`;
+        loadMessage.className = "message error";
+        loadMessage.style.display = "block";
+      }
+    }
+
+    document.getElementById("loadEventsBtn").addEventListener("click", loadEvents);
+  </script>
+
+  <script src="assets/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

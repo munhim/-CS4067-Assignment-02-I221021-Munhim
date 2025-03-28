@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Billing - Event Management System</title>
+  
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(180deg, #111 0%, #222 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    /* Top Wave */
+    .top-wave {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    /* Bottom Wave */
+    .bottom-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    /* Main Container */
+    .hero-container {
+      position: relative;
+      z-index: 2;
+      width: 90%;
+      max-width: 900px;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Glassmorphic Card */
+    .glass-card {
+      background: rgba(128, 128, 128, 0.9); /* Grey card background */
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+      width: 100%;
+      max-width: 750px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-size: 2.5rem;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #444;
+      text-align: center;
+    }
+    th {
+      background: #333;
+    }
+    .pay-btn {
+      width: 100%;
+      height: 45px;
+      background:#1a73e8;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .pay-btn:hover {
+      background: #444;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+  
+  <script>
+    // Fixed price per ticket
+    const PRICE_PER_TICKET = 500;
+    
+    // Function to load confirmed bookings for the logged-in user and compute total due
+    async function loadMyBookings() {
+      // Retrieve logged-in user's ID from localStorage
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        alert("User not logged in!");
+        return;
+      }
+      
+      const bookingsTable = document.getElementById("bookingsTable");
+      bookingsTable.innerHTML = "<p>Loading your bookings...</p>";
+      
+      try {
+        // Fetch bookings for the logged-in user from the booking service on port 8002
+        const response = await fetch(`http://localhost:8002/bookings/me?user_id=${userId}`);
+        if (!response.ok) throw new Error("Failed to load bookings");
+        const bookings = await response.json();
+        
+        if (!bookings.length) {
+          bookingsTable.innerHTML = "<p>No bookings found.</p>";
+          document.getElementById("totalDue").textContent = "Rs. 0";
+          return;
+        }
+        
+        let tableHTML = `<table>
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Event ID</th>
+              <th>Tickets</th>
+              <th>Status</th>
+              <th>Due (Rs. )</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        let totalDue = 0;
+        bookings.forEach(booking => {
+          // Only confirmed bookings contribute to dues
+          const cost = (booking.status === "CONFIRMED") ? booking.tickets * PRICE_PER_TICKET : 0;
+          totalDue += cost;
+          tableHTML += `<tr>
+            <td>${booking.id || "N/A"}</td>
+            <td>${booking.event_id}</td>
+            <td>${booking.tickets}</td>
+            <td>${booking.status}</td>
+            <td>Rs. ${cost}</td>
+          </tr>`;
+        });
+        tableHTML += "</tbody></table>";
+        bookingsTable.innerHTML = tableHTML;
+        document.getElementById("totalDue").textContent = `Rs. ${totalDue}`;
+      } catch (error) {
+        bookingsTable.innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
+      }
+    }
+    
+    // Function to pay all dues for the logged-in user
+    async function payDues() {
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        alert("User not logged in!");
+        return;
+      }
+      // Parse total due from the displayed value (strip currency symbol)
+      const totalDueText = document.getElementById("totalDue").textContent;
+      const totalDue = parseInt(totalDueText.replace("Rs. ", ""));
+      if (totalDue === 0) {
+        alert("No dues to pay.");
+        return;
+      }
+      
+      try {
+        // Payment endpoint is in the booking service on port 8002
+        const response = await fetch("http://localhost:8002/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(userId), amount: totalDue })
+        });
+        const result = await response.json();
+        if (response.ok) {
+          alert("Payment successful! Your dues are cleared.");
+          loadMyBookings(); // Reload bookings to reflect changes
+        } else {
+          alert(result.detail || "Payment failed.");
+        }
+      } catch (error) {
+        console.error("Error processing payment:", error);
+        alert("Payment failed due to server error.");
+      }
+    }
+    
+    document.addEventListener("DOMContentLoaded", loadMyBookings);
+  </script>
+</head>
+<body>
+  <!-- Top Wave -->
+  <div class="top-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,96L80,101.3C160,107,320,117,480,117.3C640,117,800,107,960,85.3C1120,64,1280,32,1360,16L1440,0L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+    </svg>
+  </div>
+  
+  <!-- Main Container -->
+  <div class="hero-container">
+    <div class="glass-card">
+      <h1>Billing</h1>
+      <p>Your Confirmed Bookings and Total Dues</p>
+      <div id="bookingsTable"></div>
+      <h2>Total Due: <span id="totalDue">Rs. 0</span></h2>
+      <button class="pay-btn" onclick="payDues()">Pay Dues</button>
+    </div>
+  </div>
+  
+  <!-- Bottom Wave -->
+  <div class="bottom-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,160L80,144C160,128,320,96,480,101.3C640,107,800,149,960,149.3C1120,149,1280,107,1360,85.3L1440,64L1440,250L1360,250C1280,250,1120,250,960,250C800,250,640,250,480,250C320,250,160,250,80,250L0,250Z"></path>
+    </svg>
+  </div>
+</body>
+</html>

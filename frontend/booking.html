@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Member Dashboard - Slide Menu</title>
+
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+
+  <!-- Google Fonts (Optional) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* Body & Waves */
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg, #111 0%, #222 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    .top-wave, .bottom-wave {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    .top-wave { top: 0; }
+    .bottom-wave { bottom: 0; transform: rotate(180deg); }
+
+    /* Main Container */
+    .hero-container {
+      position: relative;
+      z-index: 2; /* Ensure content is above waves */
+      width: 100%;
+      max-width: 900px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Glassmorphic Card */
+    .hero-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 40px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      padding: 4rem;
+      text-align: center;
+      width: 100%;
+      max-width: 700px;
+      animation: fadeIn 1.2s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hero-card h1 {
+      font-weight: 600;
+      font-size: 3rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .hero-card p {
+      font-size: 1.3rem;
+      color: #ddd;
+      margin-bottom: 2rem;
+    }
+
+    /* Notification Button */
+    .notification-btn {
+      position: absolute;
+      top: 2rem;
+      right: 2rem;  /* Moved to top right since logout button is removed */
+      background-color: #1a73e8;
+      border: none;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 3;
+    }
+    .notification-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Offcanvas Sidebar */
+    .offcanvas.offcanvas-start {
+      background-color: #111;
+      color: #fff;
+      width: 240px;
+    }
+    .offcanvas-title {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .nav-link {
+      color: #ccc;
+      font-weight: 500;
+      padding: 0.8rem 1rem;
+      transition: background 0.2s;
+    }
+    .nav-link:hover {
+      background-color: #333;
+      color: #fff;
+    }
+    .offcanvas-header {
+      border-bottom: 1px solid #333;
+    }
+
+    /* Notification Popup */
+    .notification-popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(27, 38, 59, 0.9);
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+      text-align: center;
+      z-index: 10000;
+      width: 300px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .notification-popup h3 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .notification-popup ul {
+      list-style: none;
+      padding: 0;
+      color: #fff;
+      text-align: left;
+      margin-bottom: 0;
+    }
+    .notification-popup li {
+      padding: 8px 0;
+      border-bottom: 1px solid #555;
+      cursor: pointer;
+    }
+    .notification-popup li.unread {
+      font-weight: bold;
+      color: #d93025;
+    }
+    .notification-popup button {
+      margin-top: 10px;
+      background: #444;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .notification-popup button:hover {
+      background: #222;
+    }
+
+    .menu-btn {
+      position: absolute;
+      top: 1rem;  /* Adjust as needed */
+      left: 1rem; /* Adjust as needed */
+      z-index: 3; /* Ensure it's above other elements */
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Wave -->
+  <div class="top-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,96L80,101.3C160,107,320,117,480,117.3C640,117,800,107,960,85.3C1120,64,1280,32,1360,16L1440,0L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+    </svg>
+  </div>
+
+  <!-- Notification Button -->
+  <button class="notification-btn" onclick="toggleNotificationPopup()">Notifications</button>
+  
+  <!-- Button to open offcanvas sidebar (Menu) -->
+  <button
+    class="btn btn-secondary menu-btn"
+    type="button"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#memberOffcanvas"
+    aria-controls="memberOffcanvas"
+  >
+    ☰ Menu
+  </button>
+
+  <!-- Main Container -->
+  <div class="hero-container">
+    <div class="hero-card">
+      <h1>Member Dashboard</h1>
+      <p>Select any option:</p>
+      <!-- Additional dashboard options can be added here -->
+    </div>
+  </div>
+
+  <!-- Bottom Wave -->
+  <div class="bottom-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,160L80,144C160,128,320,96,480,101.3C640,107,800,149,960,149.3C1120,149,1280,107,1360,85.3L1440,64L1440,250L1360,250C1280,250,1120,250,960,250C800,250,640,250,480,250C320,250,160,250,80,250L0,250Z"></path>
+    </svg>
+  </div>
+
+  <!-- Offcanvas Sidebar -->
+  <div
+    class="offcanvas offcanvas-start"
+    tabindex="-1"
+    id="memberOffcanvas"
+    aria-labelledby="memberOffcanvasLabel"
+  >
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="memberOffcanvasLabel">Member Menu</h5>
+      <button
+        type="button"
+        class="btn-close btn-close-white"
+        data-bs-dismiss="offcanvas"
+        aria-label="Close"
+      ></button>
+    </div>
+    <div class="offcanvas-body p-0">
+      <nav class="nav flex-column">
+        <a class="nav-link" href="book.html">Book an event</a>
+        <a class="nav-link" href="status.html">See status</a>
+        <a class="nav-link" href="bills.html">Pay Bills</a>
+        <!-- Add more member links if needed -->
+      </nav>
+    </div>
+  </div>
+
+  <!-- Notification Popup -->
+  <div class="notification-popup" id="notificationPopup">
+    <h3>Notifications</h3>
+    <ul id="notificationList">
+      <!-- Notifications will be loaded here from the notification service -->
+    </ul>
+    <button onclick="toggleNotificationPopup()">Close</button>
+  </div>
+
+  <!-- Local Bootstrap Bundle with Popper -->
+  <script src="assets/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Toggle the notification popup display
+    async function toggleNotificationPopup() {
+      const popup = document.getElementById("notificationPopup");
+      if (popup.style.display === "block") {
+        popup.style.display = "none";
+      } else {
+        await loadNotifications();
+        popup.style.display = "block";
+      }
+    }
+
+    // Load notifications for the logged-in user (using user_id from localStorage)
+    async function loadNotifications() {
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        alert("User not logged in!");
+        return;
+      }
+      try {
+        const response = await fetch(`http://localhost:8003/notifications?user_id=${userId}&unread_only=false`);
+        if (!response.ok) throw new Error("Failed to load notifications");
+        const notifications = await response.json();
+        const notificationList = document.getElementById("notificationList");
+        notificationList.innerHTML = "";
+        if (notifications.length === 0) {
+          notificationList.innerHTML = "<li>No new notifications.</li>";
+        } else {
+          notifications.forEach(notif => {
+            const li = document.createElement("li");
+            if (!notif.read) {
+              li.classList.add("unread");
+            }
+            li.textContent = `Booking ${notif.id}: ${notif.status} - Event ${notif.event_id}`;
+            li.onclick = () => markAsRead(notif._id, li);
+            notificationList.appendChild(li);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading notifications:", error);
+      }
+    }
+
+    // Mark a notification as read
+    async function markAsRead(notifId, liElement) {
+      try {
+        const response = await fetch(`http://localhost:8003/notifications/${notifId}/read`, {
+          method: "POST"
+        });
+        const result = await response.json();
+        console.log(result);
+        liElement.classList.remove("unread");
+        liElement.style.color = "#ccc";
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+    }
+  </script>
+</body>
+</html>

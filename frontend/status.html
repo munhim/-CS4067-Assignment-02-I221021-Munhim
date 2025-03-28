@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Booking Status - Event Management System</title>
+  
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(180deg, #111 0%, #222 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    /* Top Wave */
+    .top-wave {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    /* Bottom Wave */
+    .bottom-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    /* Main Container */
+    .hero-container {
+      position: relative;
+      z-index: 2;
+      width: 90%;
+      max-width: 900px;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .status-container {
+      background: rgba(128, 128, 128, 0.9); /* Grey card background */
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+      width: 100%;
+      max-width: 750px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 20px;
+      font-size: 2.5rem;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #fff;
+      font-size: 16px;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #444;
+      text-align: center;
+    }
+    th {
+      background: #333;
+    }
+    button.refresh-btn {
+      margin-top: 20px;
+      background:#1a73e8;
+      color: #fff;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button.refresh-btn:hover {
+      background: #444;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+  
+  <script>
+    async function loadStatus() {
+      // Retrieve logged-in user's ID from localStorage
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        alert("User not logged in!");
+        return;
+      }
+  
+      const statusContainer = document.getElementById("bookingsTable");
+      statusContainer.innerHTML = "<p>Loading status...</p>";
+  
+      try {
+        // Fetch all events from the event service (port 8001)
+        const eventsResponse = await fetch("http://localhost:8001/events");
+        if (!eventsResponse.ok) throw new Error("Failed to load events");
+        const events = await eventsResponse.json();
+  
+        // Fetch confirmed bookings for the logged-in user from the booking service (port 8002)
+        const bookingsResponse = await fetch(`http://localhost:8002/bookings/me?user_id=${userId}`);
+        if (!bookingsResponse.ok) throw new Error("Failed to load bookings");
+        const bookings = await bookingsResponse.json();
+  
+        // Create a lookup table for confirmed bookings keyed by event_id
+        const confirmedLookup = {};
+        bookings.forEach(booking => {
+          confirmedLookup[booking.event_id] = booking;
+        });
+  
+        // Merge the two lists: for each event, mark it as CONFIRMED if there is a booking, else PENDING
+        let tableHTML = `<table>
+          <thead>
+            <tr>
+              <th>Event Name</th>
+              <th>Date</th>
+              <th>Venue</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>`;
+  
+        events.forEach(event => {
+          let status = "PENDING";
+          let bookingInfo = "";
+          if (confirmedLookup[event.id]) {
+            status = "CONFIRMED";
+            bookingInfo = " (Booking ID: " + confirmedLookup[event.id].id + ")";
+          }
+          tableHTML += `<tr>
+            <td>${event.name}</td>
+            <td>${event.date}</td>
+            <td>${event.venue}</td>
+            <td>${status}${bookingInfo}</td>
+          </tr>`;
+        });
+  
+        tableHTML += "</tbody></table>";
+        statusContainer.innerHTML = tableHTML;
+      } catch (error) {
+        statusContainer.innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
+      }
+    }
+  
+    document.addEventListener("DOMContentLoaded", loadStatus);
+  </script>
+</head>
+<body>
+  <!-- Top Wave -->
+  <div class="top-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,96L80,101.3C160,107,320,117,480,117.3C640,117,800,107,960,85.3C1120,64,1280,32,1360,16L1440,0L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+    </svg>
+  </div>
+  
+  <!-- Main Container -->
+  <div class="hero-container">
+    <div class="status-container">
+      <h2>My Bookings</h2>
+      <div id="bookingsTable"></div>
+      <button class="refresh-btn" onclick="loadStatus()">Refresh Status</button>
+    </div>
+  </div>
+  
+  <!-- Bottom Wave -->
+  <div class="bottom-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,250L80,240C160,230,320,210,480,192C640,174,800,156,960,144C1120,132,1280,126,1360,122.7L1440,120V250H1360C1280,250,1120,250,960,250C800,250,640,250,480,250C320,250,160,250,80,250H0Z"></path>
+    </svg>
+  </div>
+</body>
+</html>

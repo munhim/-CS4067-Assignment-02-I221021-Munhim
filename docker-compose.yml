@@ -1,0 +1,124 @@
+
+
+services:
+  user-service:
+    build: ./user_services
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5433/users_db
+    networks:
+      - backend
+
+  event-service:
+    build: ./event
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mongodb
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/events_db
+    networks:
+      - backend
+
+  booking-service:
+    build: ./booking
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:  
+        condition: service_healthy  # 🟢 Wait for RabbitMQ
+    environment:
+      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5433/bookings_db
+    networks:
+      - backend
+
+  notification-service:
+    build: ./notification
+    ports:
+      - "8003:8003"
+    depends_on:
+      - mongodb
+      - rabbitmq      
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/notifications_db
+    networks:
+      - backend
+
+  frontend-service:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - user-service
+      - event-service
+      - booking-service
+      - notification-service
+    networks:
+      - backend
+      - frontend
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: users_db
+      PGPORT: 5433  # 🟢 Ensure PostgreSQL starts on 5433
+    ports:
+      - "5433:5433"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d users_db -h localhost -p 5433"]
+      interval: 5s
+      retries: 5
+      timeout: 2s  
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: ["postgres", "-c", "port=5433"]
+  rabbitmq:
+    image: rabbitmq:3-management  # Includes RabbitMQ Management UI
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"  # Default messaging port
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    networks:
+      - backend
+    volumes:
+      - mongo_data:/data/db
+
+networks:
+  backend:
+    driver: bridge
+    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_backend  # ✅ Explicit network name
+  frontend:
+    driver: bridge
+    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_frontend  # ✅ Explicit network name
+
+volumes:
+  postgres_data:
+  mongo_data:

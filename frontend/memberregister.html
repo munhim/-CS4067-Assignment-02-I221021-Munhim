@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Member Registration</title>
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg, #111 0%, #222 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+
+    .top-wave, .bottom-wave {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      z-index: 1;
+    }
+    .top-wave { top: 0; }
+    .bottom-wave { bottom: 0; transform: rotate(180deg); }
+
+    .hero-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 900px;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 40px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      padding: 3rem;
+      text-align: center;
+      width: 100%;
+      max-width: 700px;
+      animation: fadeIn 1.2s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-card h1 {
+      font-weight: 600;
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .register-form {
+      width: 100%;
+      max-width: 350px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .register-form .form-group {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .register-form input {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid #555;
+      width: 100%;
+      padding: 10px 5px;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .register-form input:focus {
+      outline: none;
+      border-bottom-color: #1a73e8;
+    }
+
+    .register-form ::placeholder { color: #aaa; }
+
+    .register-btn {
+      width: 100%;
+      height: 45px;
+      font-weight: 600;
+      background-color: #1a73e8;
+      border: none;
+      border-radius: 5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .register-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .error-message {
+      color: #d93025;
+      margin-top: 1rem;
+      display: none;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .hero-card { padding: 2rem; }
+      .hero-card h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,96L80,101.3C160,107,320,117,480,117.3C640,117,800,107,960,85.3C1120,64,1280,32,1360,16L1440,0L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+    </svg>
+  </div>
+
+  <div class="hero-container">
+    <div class="hero-card">
+      <h1>Register</h1>
+      <form id="registerForm" class="register-form" onsubmit="registerUser(event)">
+        <div class="form-group">
+          <input type="text" id="username" placeholder="Username" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="password" placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-primary register-btn">Register</button>
+        <div id="errorMessage" class="error-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="bottom-wave">
+    <svg viewBox="0 0 1440 250" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#111" fill-opacity="1" d="M0,160L80,144C160,128,320,96,480,101.3C640,107,800,149,960,149.3C1120,149,1280,107,1360,85.3L1440,64L1440,250L1360,250C1280,250,1120,250,960,250C800,250,640,250,480,250C320,250,160,250,80,250L0,250Z"></path>
+    </svg>
+  </div>
+
+  <script>
+    async function registerUser(event) {
+        event.preventDefault();
+      
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        const errorMessage = document.getElementById("errorMessage");
+      
+        if (!username || !password) {
+          errorMessage.textContent = "Please fill in all fields.";
+          errorMessage.style.display = "block";
+          return;
+        }
+      
+        try {
+          const response = await fetch("http://localhost:8000/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+          });
+      
+          const result = await response.json();
+      
+          if (response.ok) {
+            alert("Registration successful! Redirecting to login...");
+            window.location.href = "memberlogin.html";  // ✅ Redirects to member login page
+          } else {
+            errorMessage.textContent = result.detail || "Registration failed.";
+            errorMessage.style.display = "block";
+          }
+        } catch (error) {
+          errorMessage.textContent = "Server error. Please try again.";
+          errorMessage.style.display = "block";
+        }
+      }
+      
+  </script>
+
+</body>
+</html>

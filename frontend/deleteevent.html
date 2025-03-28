@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete Event - Admin Dashboard</title>
+  <!-- Local Bootstrap CSS -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* Use Flexbox to center the entire page vertically & horizontally */
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg, #111, #222);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Optional: remove or adjust padding if you want more/less space around the card */
+      padding: 1rem;
+    }
+
+    /* Container with increased width */
+    .container {
+      max-width: 1000px; /* Increased to 1000px so event names have more space */
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .hero-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      text-align: center; 
+    }
+
+    .hero-card h1 {
+      font-size: 1.8rem;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+
+    .table-container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 0.75rem;
+      margin-top: 1.5rem;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      color: #fff;
+      font-size: 0.9rem;
+      /* Let the table automatically decide column widths */
+      table-layout: auto;
+    }
+
+    table th, table td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #444;
+      white-space: nowrap;     /* Keep text in one line if possible */
+      text-overflow: ellipsis; /* Truncate if too long */
+      overflow: hidden;
+    }
+
+    /* Messages */
+    .message {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+    .message.success { color: #4caf50; }
+    .message.error { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero-card">
+      <h1>Delete Event</h1>
+      <button id="loadEventsBtn" class="btn btn-info mb-3">Load Events</button>
+      <div id="eventsTable" class="table-container"></div>
+      <div id="deleteMessage" class="message"></div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://localhost:8001/events";
+
+    // Load events and display them in a table
+    async function loadEvents() {
+      const eventsTable = document.getElementById("eventsTable");
+      eventsTable.innerHTML = "<p>Loading events...</p>";
+      const deleteMessage = document.getElementById("deleteMessage");
+      deleteMessage.style.display = "none";
+
+      try {
+        const response = await fetch(BASE_URL);
+        if (!response.ok) throw new Error("Failed to load events");
+        const events = await response.json();
+        if (!events.length) {
+          eventsTable.innerHTML = "<p>No events found.</p>";
+          return;
+        }
+
+        let tableHTML = `<table class="table table-dark table-striped">
+          <thead>
+            <tr>
+              <th style="min-width:80px;">ID</th>
+              <th>Name</th>
+              <th>Venue</th>
+              <th>Date</th>
+              <th style="min-width:70px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+        events.forEach(event => {
+          const eventId = event._id ? event._id : event.id;
+          tableHTML += `<tr>
+            <td>${eventId}</td>
+            <td>${event.name}</td>
+            <td>${event.venue}</td>
+            <td>${event.date}</td>
+            <td>
+              <button class="btn btn-sm btn-danger" onclick="deleteEvent('${eventId}')">Delete</button>
+            </td>
+          </tr>`;
+        });
+
+        tableHTML += `</tbody></table>`;
+        eventsTable.innerHTML = tableHTML;
+
+      } catch (error) {
+        eventsTable.innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
+      }
+    }
+
+    // Delete event by ID
+    async function deleteEvent(eventId) {
+      const deleteMessage = document.getElementById("deleteMessage");
+      deleteMessage.style.display = "none";
+
+      if (!confirm(`Are you sure you want to delete event ID: ${eventId}?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BASE_URL}/${eventId}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          deleteMessage.textContent = "Event deleted successfully!";
+          deleteMessage.className = "message success";
+          deleteMessage.style.display = "block";
+          loadEvents(); // Reload events list
+        } else {
+          const result = await response.json();
+          deleteMessage.textContent = `Delete failed: ${result.detail || JSON.stringify(result)}`;
+          deleteMessage.className = "message error";
+          deleteMessage.style.display = "block";
+        }
+      } catch (error) {
+        deleteMessage.textContent = `Error: ${error.message}`;
+        deleteMessage.className = "message error";
+        deleteMessage.style.display = "block";
+      }
+    }
+
+    document.getElementById("loadEventsBtn").addEventListener("click", loadEvents);
+  </script>
+  <script src="assets/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
