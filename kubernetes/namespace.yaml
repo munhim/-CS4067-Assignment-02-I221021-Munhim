@@ -1,4 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: online-event-booking-abdullah-aslam
+  name: online-event-booking-munhim

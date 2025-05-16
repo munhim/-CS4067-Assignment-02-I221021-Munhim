@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: online-event-booking-ingress
-  namespace: online-event-booking-abdullah-aslam
+  namespace: online-event-booking-munhim
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
