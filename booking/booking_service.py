@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import pika
 import json
 import asyncio
+import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, String, MetaData, Table, select, update
@@ -12,33 +13,70 @@ from pymongo import MongoClient
 from sqlalchemy.sql import text
 import asyncpg
 
+# Get database connection info from environment variables
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "pass")
+DB_HOST = os.environ.get("DB_HOST", "postgres")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "bookings_db")
+
+# Print connection details for debugging
+print(f"Database connection details: Host={DB_HOST}, Port={DB_PORT}, User={DB_USER}, DB={DB_NAME}")
+
 # Initial engine to connect to the default 'postgres' database
-INIT_DATABASE_URL = "postgresql+asyncpg://myuser:mypassword@postgres:5433/postgres"
-init_engine = create_async_engine(INIT_DATABASE_URL, echo=True)
+INIT_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/postgres"
 
 # Target database URL
-DATABASE_URL = "postgresql+asyncpg://myuser:mypassword@postgres:5433/bookings_db"
+DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 async def create_bookings_db():
     try:
-        conn = await asyncpg.connect(user="myuser", password="mypassword", host="postgres", port=5433, database="postgres")
+        # Add a delay to allow DNS resolution and service discovery
+        await asyncio.sleep(10)
         
-        # Enable autocommit
-        await conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'bookings_db'")
+        print(f"Attempting to connect to PostgreSQL at {DB_HOST}:{DB_PORT}")
         
-        # Check if the database exists
-        exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = 'bookings_db'")
-        if not exists:
-            await conn.execute("COMMIT")  # Ensure no active transaction
-            await conn.execute("CREATE DATABASE bookings_db WITH OWNER myuser")
-
-        await conn.close()
+        # Try connecting with asyncpg directly
+        try:
+            conn = await asyncpg.connect(
+                user=DB_USER, 
+                password=DB_PASSWORD, 
+                host=DB_HOST, 
+                port=int(DB_PORT),  # Ensure port is an integer
+                database="postgres"
+            )
+            print("Successfully connected to PostgreSQL!")
+            
+            # Check if the database exists
+            exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", DB_NAME)
+            if not exists:
+                # Create the database if it doesn't exist
+                await conn.execute(f"CREATE DATABASE {DB_NAME}")
+                print(f"Database {DB_NAME} created successfully")
+            else:
+                print(f"Database {DB_NAME} already exists")
+                
+            await conn.close()
+            return True
+        except Exception as conn_err:
+            print(f"Direct connection error: {conn_err}")
+            return False
+            
     except Exception as e:
-        print("Database creation error:", e)
-
+        print(f"Database creation error: {e}")
+        return False
 
 # Now, connect to bookings_db
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=True,
+    pool_pre_ping=True,  # Add connection health check
+    pool_recycle=3600,   # Recycle connections after 1 hour
+    connect_args={
+        "command_timeout": 10  # Set connection timeout
+    }
+)
+
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 metadata = MetaData()
 
@@ -55,7 +93,7 @@ bookings_table = Table(
 # FastAPI instance
 app = FastAPI()
 
-# CORS middleware to allow frontend requests
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -65,7 +103,9 @@ app.add_middleware(
 )
 
 # Connect to MongoDB for payment records
-payment_client = MongoClient("mongodb://mongodb:27017/")
+MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")
+MONGO_PORT = os.environ.get("MONGO_PORT", "27017")
+payment_client = MongoClient(f"mongodb://{MONGO_HOST}:{MONGO_PORT}/")
 payment_db = payment_client["payment_db"]
 payments_collection = payment_db["payment"]
 
@@ -94,14 +134,40 @@ async def get_db():
         yield session
 
 async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)  # This will create the "bookings" table
+    try:
+        # Add a delay to ensure database is ready
+        await asyncio.sleep(5)
+        print("Attempting to create tables...")
+        async with engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)  # This will create the "bookings" table
+        print("Tables created successfully")
+    except Exception as e:
+        print(f"Error creating tables: {e}")
 
 # Run database creation on startup
 @app.on_event("startup")
 async def startup_event():
-    await create_bookings_db()
-    await create_tables()  # Ensure tables exist
+    print("Starting booking service...")
+    print(f"Database connection: {DATABASE_URL}")
+    
+    # Try to create the database and tables with retries
+    max_retries = 5
+    for i in range(max_retries):
+        print(f"Attempt {i+1}/{max_retries} to connect to database")
+        db_created = await create_bookings_db()
+        if db_created:
+            await create_tables()  # Ensure tables exist
+            print("Startup completed successfully")
+            break
+        else:
+            if i < max_retries - 1:
+                retry_delay = 5 * (i + 1)  # Incremental backoff
+                print(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print("Failed to connect to the database after multiple attempts")
+
+# Remaining API endpoints remain the same...
 
 # POST endpoint to create a booking
 @app.post("/bookings")
@@ -133,9 +199,12 @@ async def create_booking(request: BookingRequest, db: AsyncSession = Depends(get
         "tickets": request.tickets,
         "status": "CONFIRMED"
     }
+    
+    RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "rabbitmq")
+    
     try:
         # Use the Docker service name 'rabbitmq', not 'localhost'
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))  
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))  
         channel = connection.channel()
         
         # Declare queue to ensure it exists
@@ -152,8 +221,6 @@ async def create_booking(request: BookingRequest, db: AsyncSession = Depends(get
     except Exception as e:
         print("Error publishing to RabbitMQ:", str(e))
         raise HTTPException(status_code=500, detail="Error publishing notification")
-
-
     
     return {"message": "Booking confirmed", "booking_id": booking_id}
 

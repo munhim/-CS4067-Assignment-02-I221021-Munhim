@@ -2,15 +2,18 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: event-booking-config
-  namespace: online-event-booking-abdullah-aslam
+  namespace: online-event-booking-munhim
 
 data:
-  POSTGRES_HOST: postgres
-  POSTGRES_PORT: "5433"
-  MONGO_HOST: mongodb
-  MONGO_PORT: "27017"
-  USER_SERVICE_URL: "http://user-service:8000"
-  EVENT_SERVICE_URL: "http://event-service:8001"
-  BOOKING_SERVICE_URL: "http://booking-service:8002"
-  NOTIFICATION_SERVICE_URL: "http://notification-service:8003"
-  FRONTEND_SERVICE_URL: "http://frontend-service:8080"
+  # Database connection strings
+  USER_DB_URL: "mongodb://mongo:27017/user_service_db"
+  EVENT_DB_URL: "mongodb://mongo:27017/eventsdb"
+  BOOKING_DB_URL: "postgresql+asyncpg://postgres:pass@postgres:5432/bookings_db"
+  NOTIFICATION_DB_URL: "mongodb://mongo:27017/notificationsdb"
+
+  # API URLs for service-to-service communication
+  USER_SERVICE_URL: "http://user-service.default.svc.cluster.local:8000"
+  EVENT_SERVICE_URL: "http://event-service.default.svc.cluster.local:8001"
+  BOOKING_SERVICE_URL: "http://booking-service.default.svc.cluster.local:8002"
+  NOTIFICATION_SERVICE_URL: "http://notification-service.default.svc.cluster.local:8003"
+  FRONTEND_URL: "http://frontend-service.default.svc.cluster.local:8080"

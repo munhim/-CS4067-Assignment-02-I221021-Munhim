@@ -1,4 +1,4 @@
-
+version: '3.8'
 
 services:
   user-service:
@@ -9,7 +9,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5433/users_db
+      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5432/users_db
     networks:
       - backend
 
@@ -31,10 +31,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:  
-        condition: service_healthy  # 🟢 Wait for RabbitMQ
+      rabbitmq:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5433/bookings_db
+      DATABASE_URL: postgresql+asyncpg://myuser:mypassword@postgres:5432/bookings_db
     networks:
       - backend
 
@@ -69,26 +69,26 @@ services:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: users_db
-      PGPORT: 5433  # 🟢 Ensure PostgreSQL starts on 5433
     ports:
-      - "5433:5433"
+      - "5432:5432"
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myuser -d users_db -h localhost -p 5433"]
+      test: ["CMD-SHELL", "pg_isready -U myuser -d users_db -h localhost -p 5432"]
       interval: 5s
       retries: 5
       timeout: 2s  
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    command: ["postgres", "-c", "port=5433"]
+    # No 'command' override here so Postgres listens on 5432 by default
+
   rabbitmq:
-    image: rabbitmq:3-management  # Includes RabbitMQ Management UI
+    image: rabbitmq:3-management
     container_name: rabbitmq
     restart: always
     ports:
-      - "5672:5672"  # Default messaging port
-      - "15672:15672"  # Management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -99,8 +99,6 @@ services:
       retries: 5
     networks:
       - backend
-
-
 
   mongodb:
     image: mongo:latest
@@ -114,10 +112,10 @@ services:
 networks:
   backend:
     driver: bridge
-    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_backend  # ✅ Explicit network name
+    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_backend
   frontend:
     driver: bridge
-    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_frontend  # ✅ Explicit network name
+    name: cs4067-assgt-eventbooking-i220784-abdullah-aslam-master_frontend
 
 volumes:
   postgres_data:

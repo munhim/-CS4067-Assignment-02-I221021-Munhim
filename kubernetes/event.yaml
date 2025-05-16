@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: notification-service
-  namespace: online-event-booking-abdullah-aslam
+  name: event-service
+  namespace: online-event-booking-munhim
   labels:
-    app: notification-service
+    app: event-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: notification-service
+      app: event-service
   template:
     metadata:
       labels:
-        app: notification-service
+        app: event-service
     spec:
       containers:
-        - name: notification-service
-          image: abdullahaslam007/notification-service:latest
+        - name: event-service
+          image: abdulmunhim/cs4067-assignment-02-i221021-munhim-event-service:latest
           ports:
-            - containerPort: 8003
+            - containerPort: 8001
           envFrom:
             - configMapRef:
                 name: event-booking-config
@@ -27,22 +27,24 @@ spec:
                 name: event-booking-secrets
           resources:
             limits:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "500m"
             requests:
-              memory: "128Mi"
+              memory: "256Mi"
               cpu: "250m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: notification-service
-  namespace: online-event-booking-abdullah-aslam
+  name: event-service
+  namespace: online-event-booking-munhim
+  labels:
+    app: event-service
 spec:
   selector:
-    app: notification-service
+    app: event-service
   ports:
     - protocol: TCP
-      port: 8003
-      targetPort: 8003
+      port: 8001
+      targetPort: 8001
   type: ClusterIP
