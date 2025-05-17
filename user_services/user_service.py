@@ -7,29 +7,33 @@ from sqlalchemy import Column, Integer, String, MetaData, Table, insert, update
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import asyncio
+import re
 
-<<<<<<< HEAD
-# PostgreSQL connection URL
-DATABASE_URL = "postgresql+asyncpg://myuser:mypassword@postgres:5432/users_db"
-=======
 # Print all environment variables to debug connection issues
 print("Environment variables:")
 for key, value in os.environ.items():
     print(f"{key}: {value}")
 
-# Get database connection info from environment variables
-# If not set, use hardcoded values matching your postgres.yaml
-db_user = os.getenv("DB_USER", "postgres")
-db_password = os.getenv("DB_PASSWORD", "pass")
-db_host = os.getenv("DB_HOST", "postgres")
-db_port = os.getenv("DB_PORT", "5432")  # Ensure this is 5432
-db_name = os.getenv("DB_NAME", "users_db")
+# Get database connection info
+# First check if we have a complete DATABASE_URL
+database_url = os.getenv("DATABASE_URL")
 
-# Build the database URL
-DATABASE_URL = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+if database_url:
+    print(f"Found DATABASE_URL: {database_url}")
+    # Use the provided DATABASE_URL directly
+    DATABASE_URL = database_url
+else:
+    # If not, build it from individual components
+    db_user = os.getenv("DB_USER", "myuser")  # Changed default from "postgres" to "myuser"
+    db_password = os.getenv("DB_PASSWORD", "mypassword")  # Changed default from "pass" to "mypassword"
+    db_host = os.getenv("DB_HOST", "postgres")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "users_db")
+    
+    # Build the database URL
+    DATABASE_URL = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
-print(f"Connecting to database with URL: {DATABASE_URL}")
->>>>>>> 401fe3875b1e69c92908dc0d4f689cce23eb2b7e
+print(f"Connecting to database with URL: {DATABASE_URL.replace(db_password if 'db_password' in locals() else re.search(r'://([^:]+):([^@]+)@', DATABASE_URL).group(2), '******')}")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -57,7 +61,7 @@ app.add_middleware(
 # Ensure the database and table are created at startup
 @app.on_event("startup")
 async def startup():
-    print(f"Starting up application, connecting to {DATABASE_URL}")
+    print(f"Starting up application, connecting to {DATABASE_URL.replace(db_password if 'db_password' in locals() else re.search(r'://([^:]+):([^@]+)@', DATABASE_URL).group(2), '******')}")
     try:
         # Add a retry mechanism for database connection
         max_retries = 5
@@ -196,7 +200,7 @@ async def health():
             "status": "unhealthy", 
             "database": "disconnected", 
             "error": str(e),
-            "database_url": DATABASE_URL.replace(db_password, "******")  # Hide password in logs
+            "database_url": DATABASE_URL.replace(db_password if 'db_password' in locals() else re.search(r'://([^:]+):([^@]+)@', DATABASE_URL).group(2), "******")  # Hide password in logs
         }
 
 @app.get("/")
